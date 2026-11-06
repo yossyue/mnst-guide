@@ -291,6 +291,18 @@ summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px;
     });
 
     // 線: 暗い縁取りの上に色線を重ね、どんな画像の上でも見えるようにする
+    // 引く向きと逆に、壁までの線を1本だけ（反射しない）緑で出す
+    var bk = norm(S.dx, S.dy); bk = { x: -bk.x, y: -bk.y };
+    var bkx = bk.x > 1e-12 ? (S.W - S.x) / bk.x : bk.x < -1e-12 ? -S.x / bk.x : Infinity;
+    var bky = bk.y > 1e-12 ? (S.H - S.y) / bk.y : bk.y < -1e-12 ? -S.y / bk.y : Infinity;
+    var bkt = Math.min(bkx, bky);
+    if (isFinite(bkt)) {
+      var bs = toS({ x: S.x, y: S.y }), be = toS({ x: S.x + bk.x * bkt, y: S.y + bk.y * bkt });
+      ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(bs.x, bs.y); ctx.lineTo(be.x, be.y);
+      ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = S.lw + 2.5; ctx.stroke();
+      ctx.strokeStyle = '#22c55e'; ctx.lineWidth = S.lw; ctx.stroke();
+    }
     var pts = trace();
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     ctx.beginPath();
