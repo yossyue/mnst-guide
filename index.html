@@ -131,13 +131,11 @@ summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px;
     <div class="nf">
       <label for="bounces">反射回数</label>
       <span class="in"><input id="bounces" type="number" inputmode="numeric" min="1" max="200" step="1" value="8">回</span>
-      <input id="bouncesR" class="rg" type="range" min="1" max="50" step="1" value="8" aria-label="反射回数のバー">
     </div>
 
     <div class="nf">
       <label for="lw">線の太さ</label>
       <span class="in"><input id="lw" type="number" inputmode="decimal" min="0.5" max="40" step="any" value="1">px</span>
-      <input id="lwR" class="rg" type="range" min="0.5" max="12" step="0.1" value="1" aria-label="線の太さのバー">
     </div>
 
     <div class="row">
@@ -484,21 +482,15 @@ summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px;
   $('bounces').addEventListener('input', function (e) {
     var v = parseInt(e.target.value, 10);
     if (!(v >= 1)) return;
-    S.n = Math.min(200, v); $('bouncesR').value = S.n; draw();
+    S.n = Math.min(200, v); draw();
   });
   $('bounces').addEventListener('change', function (e) { e.target.value = S.n; });
   $('lw').addEventListener('input', function (e) {
     var v = parseFloat(e.target.value);
     if (!(v >= 0.5)) return;
-    S.lw = Math.min(40, v); $('lwR').value = S.lw; draw();
+    S.lw = Math.min(40, v); draw();
   });
   $('lw').addEventListener('change', function (e) { e.target.value = S.lw; });
-  $('lwR').addEventListener('input', function (e) {
-    S.lw = parseFloat(e.target.value); $('lw').value = S.lw; draw();
-  });
-  $('bouncesR').addEventListener('input', function (e) {
-    S.n = parseInt(e.target.value, 10); $('bounces').value = S.n; draw();
-  });
 
   // 各辺を、始点からの距離で動かす。反対側の辺は動かない
   // 他の辺は画面上で動かさない。画面からはみ出すときだけ全体を合わせ直す
