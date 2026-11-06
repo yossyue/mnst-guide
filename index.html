@@ -81,7 +81,11 @@ input[type=range] { width: 100%; height: 32px; accent-color: var(--accent); marg
 .nf .in { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .8125rem; }
 .nf input { width: 96px; min-height: 44px; font: inherit; font-size: 1.125rem; font-variant-numeric: tabular-nums; text-align: right; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; }
 .srow { display: flex; align-items: center; gap: 8px; }
-.srow span { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+.srow span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
+.sname { font-weight: 700; overflow-wrap: anywhere; }
+.sname.noname { color: var(--muted); font-weight: 400; }
+.srow small { color: var(--muted); font-size: .75rem; overflow-wrap: anywhere; }
+.sedit, .nameIn { width: 100%; min-height: 40px; font: inherit; font-size: 1rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; }
 .srow button { min-height: 40px; }
 #saved { display: flex; flex-direction: column; gap: 8px; }
 .empty { color: var(--muted); font-size: .875rem; margin: 0; }
@@ -182,6 +186,7 @@ summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px;
     <details>
       <summary>長方形の位置を保存・適用</summary>
       <div class="inner">
+        <input id="saveName" class="nameIn" type="text" maxlength="30" placeholder="名前（省略できます）" aria-label="保存する長方形の名前">
         <button id="saveSize" type="button">今の位置を保存</button>
         <div id="saved"></div>
       </div>
@@ -565,26 +570,48 @@ summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px;
     sizes.forEach(function (z, i) {
       var row = document.createElement('div'); row.className = 'srow';
       var t = document.createElement('span');
-      t.textContent = (z.iw ? '画像' + z.iw + '×' + z.ih + '  ' : '') + '左 ' + r1(z.l) + ' 上 ' + r1(z.t) + ' 右 ' + r1(z.r) + ' 下 ' + r1(z.b);
+      var nm = document.createElement('b'); nm.className = 'sname' + (z.name ? '' : ' noname');
+      nm.textContent = z.name || '名前なし';
+      var sub = document.createElement('small');
+      sub.textContent = (z.iw ? '画像' + z.iw + '×' + z.ih + '  ' : '') + '左 ' + r1(z.l) + ' 上 ' + r1(z.t) + ' 右 ' + r1(z.r) + ' 下 ' + r1(z.b);
+      t.appendChild(nm); t.appendChild(sub);
+      var rn = document.createElement('button'); rn.type = 'button'; rn.textContent = '名前';
+      rn.addEventListener('click', function () {
+        var inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 30; inp.className = 'sedit';
+        inp.value = z.name || ''; inp.setAttribute('aria-label', '名前');
+        t.replaceChild(inp, nm); inp.focus(); inp.select();
+        var done = false;
+        function commit() {
+          if (done) return; done = true;
+          z.name = inp.value.trim().slice(0, 30);
+          lsSet(LS_SIZES, sizes); queueDb(); renderSizes();
+        }
+        inp.addEventListener('blur', commit);
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') inp.blur(); });
+      });
       var a = document.createElement('button'); a.type = 'button'; a.textContent = '適用';
       if (!canApply(z)) { a.disabled = true; a.title = z.iw ? '同じ画像を入れると適用できます' : '画像を外すと適用できます'; }
       a.addEventListener('click', function () { applyRect(z); });
       var d = document.createElement('button'); d.type = 'button'; d.textContent = '削除';
       d.addEventListener('click', function () { sizes.splice(i, 1); lsSet(LS_SIZES, sizes); renderSizes(); queueDb(); });
-      row.appendChild(t); row.appendChild(a); row.appendChild(d); box.appendChild(row);
+      row.appendChild(t); row.appendChild(a); row.appendChild(rn); row.appendChild(d); box.appendChild(row);
     });
   }
   $('saveSize').addEventListener('click', function () {
     var z0 = {
       l: r1(getEdge('l')), t: r1(getEdge('t')), r: r1(getEdge('r')), b: r1(getEdge('b')),
-      iw: img ? img.width : 0, ih: img ? img.height : 0
+      iw: img ? img.width : 0, ih: img ? img.height : 0,
+      name: ($('saveName').value || '').trim().slice(0, 30)
     };
+    var prev = sizes.filter(function (z) { return sameRect(z, z0); })[0];
+    if (prev && !z0.name) z0.name = prev.name || '';   // 同じ位置を名前なしで保存しても、前の名前を残す
     sizes = sizes.filter(function (z) {
       return !(z.l === z0.l && z.t === z0.t && z.r === z0.r && z.b === z0.b && z.iw === z0.iw && z.ih === z0.ih);
     });
     sizes.unshift(z0);
     sizes = sizes.slice(0, 10);
     lsSet(LS_SIZES, sizes); renderSizes(); queueDb();
+    $('saveName').value = '';
   });
   renderSizes();
   // 最後の大きさは、操作のたびと閉じるときに自動で保存する
@@ -617,8 +644,9 @@ summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px;
     var out = [];
     (a || []).concat(b || []).forEach(function (z) {
       if (!validRect(z)) return;
-      if (out.some(function (q) { return sameRect(q, z); })) return;
-      out.push({ l: z.l, t: z.t, r: z.r, b: z.b, iw: z.iw || 0, ih: z.ih || 0 });
+      var ex = out.filter(function (q) { return sameRect(q, z); })[0];
+      if (ex) { if (!ex.name && z.name) ex.name = String(z.name).slice(0, 30); return; }
+      out.push({ l: z.l, t: z.t, r: z.r, b: z.b, iw: z.iw || 0, ih: z.ih || 0, name: typeof z.name === 'string' ? z.name.slice(0, 30) : '' });
     });
     return out.slice(0, 10);
   }
