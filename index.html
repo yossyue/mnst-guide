@@ -1,0 +1,771 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>反射ガイド</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: スマホ縦持ち前提。上に一行の手順、中央に背景なしの長方形、下に親指で届く操作列。 */
+:root {
+  --bg: #f1f2ee;
+  --panel: #fbfbf9;
+  --fg: #1b221e;
+  --muted: #5f6b64;
+  --line: #d0d6d0;
+  --accent: #e2562b;
+  --accent-fg: #ffffff;
+  --frame: #1b221e;
+  --font-ui: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111613; --panel: #1a211d; --fg: #e7ede8; --muted: #94a49b; --line: #2d3832;
+    --accent: #ff7a4d; --accent-fg: #1b0d06; --frame: #e7ede8;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111613; --panel: #1a211d; --fg: #e7ede8; --muted: #94a49b; --line: #2d3832;
+  --accent: #ff7a4d; --accent-fg: #1b0d06; --frame: #e7ede8;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
+  padding-block: 12px 20px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-tap-highlight-color: transparent;
+}
+main { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+h1 { font-size: 1.125rem; margin: 0; font-weight: 700; letter-spacing: .04em; }
+#step { margin: 0; font-size: .875rem; color: var(--muted); text-align: right; }
+#stage { width: 100%; min-width: 0; }
+canvas { display: block; margin: 0 auto; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+.bar { display: flex; flex-direction: column; gap: 10px; }
+body.full { overflow: hidden; }
+body.full #stage { position: fixed; z-index: 50; background: var(--bg); top: env(safe-area-inset-top, 0px); left: 0; right: 0; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+#fbar { position: fixed; z-index: 51; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; background: var(--bg); padding: 4px max(8px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px)); }
+body.full.adj #stage { bottom: calc(52px + 164px + env(safe-area-inset-bottom, 0px)); }
+#fadj { position: fixed; z-index: 51; left: 0; right: 0; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); height: 164px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; align-content: start; background: var(--panel); border-top: 1px solid var(--line); padding: 8px max(14px, env(safe-area-inset-right, 0px)) 4px max(14px, env(safe-area-inset-left, 0px)); }
+#fadj .fc { min-width: 0; }
+#fadj .fh { display: flex; justify-content: space-between; align-items: center; font-size: .8125rem; color: var(--muted); }
+#fadj input[type=number] { width: 84px; min-height: 36px; font: inherit; font-size: 1rem; text-align: right; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 0 8px; }
+#fadj input[type=range] { height: 36px; }
+#fbar button { min-height: 44px; padding: 0 4px; font-size: .875rem; }
+#fbar button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); font-weight: 700; }
+.seg button { padding: 0 4px; }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); }
+.seg button { border: 0; border-radius: 0; min-height: 48px; font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); font-weight: 700; }
+button, .btn {
+  font: inherit; font-size: .9375rem; color: var(--fg); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 10px; padding: 0 14px; min-height: 44px;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; text-align: center;
+}
+.row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.ctl { display: flex; flex-direction: column; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px 6px; }
+.ctl label { display: flex; justify-content: space-between; font-size: .8125rem; color: var(--muted); }
+.ctl output { color: var(--fg); font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; height: 32px; accent-color: var(--accent); margin: 0; }
+.nf { flex-wrap: wrap; row-gap: 0; }
+.nf .rg { width: 100%; height: 36px; margin: 0; }
+.nf { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 14px; min-height: 52px; }
+.nf label { font-size: .9375rem; min-width: 0; }
+.nf label small { display: block; color: var(--muted); font-size: .75rem; }
+.nf .in { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .8125rem; }
+.nf input { width: 96px; min-height: 44px; font: inherit; font-size: 1.125rem; font-variant-numeric: tabular-nums; text-align: right; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; }
+.srow { display: flex; align-items: center; gap: 8px; }
+.srow span { flex: 1; min-width: 0; font-variant-numeric: tabular-nums; }
+.srow button { min-height: 40px; }
+#saved { display: flex; flex-direction: column; gap: 8px; }
+.empty { color: var(--muted); font-size: .875rem; margin: 0; }
+.sh { margin: 8px 0 0; font-size: .8125rem; font-weight: 500; color: var(--muted); letter-spacing: .08em; }
+.sizeLine { margin: 0; font-size: .875rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sr:focus-visible + span, label.btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.swatches { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 6px 14px; }
+.swatches > span { font-size: .8125rem; color: var(--muted); }
+.sw { display: flex; gap: 6px; }
+.sw button { width: 44px; min-height: 44px; padding: 0; border-radius: 50%; border: 3px solid var(--panel); box-shadow: 0 0 0 1px var(--line); }
+.sw button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--fg); }
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px; cursor: pointer; font-size: .9375rem; }
+.inner { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.inner .ctl { padding: 4px 0; border: 0; background: transparent; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <h1>反射ガイド</h1>
+    <p id="step" aria-live="polite"></p>
+  </header>
+
+  <div id="stage"><canvas id="cv" aria-label="長方形の中で反射する線"></canvas></div>
+
+  <section class="bar">
+    <div class="seg" role="group" aria-label="操作">
+      <button id="modeStart" type="button" aria-pressed="true">始点</button>
+      <button id="modeAim" type="button" aria-pressed="false">線</button>
+      <button id="modeImg" type="button" aria-pressed="false">画像</button>
+      <button id="modeFull" type="button">拡大</button>
+    </div>
+  </section>
+
+  <section class="bar">
+    <h2 class="sh">設定</h2>
+
+    <div class="nf">
+      <label for="bounces">反射回数</label>
+      <span class="in"><input id="bounces" type="number" inputmode="numeric" min="1" max="200" step="1" value="8">回</span>
+      <input id="bouncesR" class="rg" type="range" min="1" max="50" step="1" value="8" aria-label="反射回数のバー">
+    </div>
+
+    <div class="nf">
+      <label for="lw">線の太さ</label>
+      <span class="in"><input id="lw" type="number" inputmode="decimal" min="0.5" max="40" step="any" value="1">px</span>
+      <input id="lwR" class="rg" type="range" min="0.5" max="12" step="0.1" value="1" aria-label="線の太さのバー">
+    </div>
+
+    <div class="row">
+      <label class="btn" for="file"><input id="file" class="sr" type="file" accept="image/*">画像を入れる</label>
+      <button id="clearImg" type="button">画像を外す</button>
+    </div>
+
+    <div class="nf">
+      <label for="ipct">画像の大きさ</label>
+      <span class="in"><input id="ipct" type="number" inputmode="decimal" min="5" max="2000" step="any" value="100" disabled>%</span>
+      <input id="ipctR" class="rg" type="range" min="10" max="400" step="0.1" value="100" disabled aria-label="画像の大きさのバー">
+    </div>
+
+    <div class="swatches">
+      <span>線の色</span>
+      <div class="sw" id="sw"></div>
+    </div>
+
+    <details>
+      <summary>各辺の位置を変える</summary>
+      <div class="inner">
+        <div class="row"><p id="size" class="sizeLine"></p><button id="fit" type="button">画面に合わせる</button></div>
+        <div class="nf">
+          <label for="dt">上の壁<small>位置（始点と無関係）</small></label>
+          <span class="in"><input id="dt" type="number" inputmode="decimal" step="any" value="124"></span>
+          <input id="dtR" class="rg" type="range" min="-300" max="800" step="0.1" value="124" aria-label="上の壁のバー">
+        </div>
+        <div class="nf">
+          <label for="db">下の壁<small>位置（始点と無関係）</small></label>
+          <span class="in"><input id="db" type="number" inputmode="decimal" step="any" value="76"></span>
+          <input id="dbR" class="rg" type="range" min="-300" max="800" step="0.1" value="76" aria-label="下の壁のバー">
+        </div>
+        <div class="nf">
+          <label for="dl">左の壁<small>位置（始点と無関係）</small></label>
+          <span class="in"><input id="dl" type="number" inputmode="decimal" step="any" value="54"></span>
+          <input id="dlR" class="rg" type="range" min="-300" max="800" step="0.1" value="54" aria-label="左の壁のバー">
+        </div>
+        <div class="nf">
+          <label for="dr">右の壁<small>位置（始点と無関係）</small></label>
+          <span class="in"><input id="dr" type="number" inputmode="decimal" step="any" value="126"></span>
+          <input id="drR" class="rg" type="range" min="-300" max="800" step="0.1" value="126" aria-label="右の壁のバー">
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary>長方形の位置を保存・適用</summary>
+      <div class="inner">
+        <button id="saveSize" type="button">今の位置を保存</button>
+        <div id="saved"></div>
+      </div>
+    </details>
+  </section>
+</main>
+
+<div id="fadj" hidden></div>
+<div id="fbar" hidden>
+  <button id="fStart" type="button" aria-pressed="true">始点</button>
+  <button id="fAim" type="button" aria-pressed="false">線</button>
+  <button id="fImg" type="button" aria-pressed="false">画像</button>
+  <button id="fAdj" type="button" aria-pressed="false">調整</button>
+  <button id="fClose" type="button">閉じる</button>
+</div>
+
+<script>
+(function () {
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var stage = document.getElementById('stage');
+  var $ = function (id) { return document.getElementById(id); };
+  var PAD = 36, HOFF = 14, drag = null, full = false, adjOn = false, START_OFF = -57;   // 始点は指の約1.5cm左に出す（指が始点の右に来る）
+  var COLORS = [
+    { name: '赤', v: '#ff3b30' }, { name: '黄', v: '#ffd60a' }, { name: '緑', v: '#30d158' },
+    { name: '青', v: '#0a84ff' }, { name: '白', v: '#ffffff' }, { name: '黒', v: '#111111' }
+  ];
+  var S = { W: 180, H: 200, x: 0.3 * 180, y: 0.78 * 200, dx: 0.42, dy: -0.9, n: 8, lw: 1, mode: 'start', color: COLORS[0].v, aimed: true };
+  var view = { ox: 0, oy: 0, s: 1 }, off = { x: 0, y: 0 }, img = null, imgUrl = null, ip = { x: 0, y: 0, w: 1, h: 1 };
+
+  function norm(x, y) { var l = Math.hypot(x, y); return { x: x / l, y: y / l }; }
+
+  function trace() {
+    var d = norm(S.dx, S.dy);
+    var p = { x: S.x, y: S.y };
+    var pts = [{ x: p.x, y: p.y }];
+    for (var i = 0; i < S.n; i++) {
+      var tx = d.x > 1e-12 ? (S.W - p.x) / d.x : d.x < -1e-12 ? -p.x / d.x : Infinity;
+      var ty = d.y > 1e-12 ? (S.H - p.y) / d.y : d.y < -1e-12 ? -p.y / d.y : Infinity;
+      var t = Math.min(tx, ty);
+      if (!isFinite(t)) break;
+      p = { x: p.x + d.x * t, y: p.y + d.y * t };
+      pts.push({ x: p.x, y: p.y });
+      if (Math.abs(tx - ty) < 1e-9) { d.x = -d.x; d.y = -d.y; }
+      else if (tx < ty) d.x = -d.x;
+      else d.y = -d.y;
+    }
+    return pts;
+  }
+
+  function toS(p) { return { x: view.ox + p.x * view.s, y: view.oy + p.y * view.s }; }
+  function toW(px, py) { return { x: (px - view.ox) / view.s, y: (py - view.oy) / view.s }; }
+
+  // キャンバスは常に同じ大きさ。長方形はこの中で中央寄せに収める
+  function resize() {
+    var w = Math.max(240, stage.clientWidth);
+    var h = full ? Math.max(200, stage.clientHeight) : Math.max(300, window.innerHeight * 0.6);   // 画面いっぱい。設定は下へスクロール
+    var pad = (full && !adjOn) ? 24 : PAD;   // 拡大中は余白を最小に
+    // 始点は指の左に出るので、右側の余白だけ広く取る（右の壁の上にも始点を置けるように）
+    var padR = Math.max(pad, -START_OFF + 12);
+    view.s = Math.min((w - pad - padR) / S.W, (h - pad * 2) / S.H);
+    view.ox = pad + (w - pad - padR - S.W * view.s) / 2; view.oy = (h - S.H * view.s) / 2;
+    var dpr = window.devicePixelRatio || 1;
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw();
+  }
+
+  function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  function draw() {
+    var w = cv.clientWidth, h = cv.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+    var tl = toS({ x: 0, y: 0 }), br = toS({ x: S.W, y: S.H });
+    var rw = br.x - tl.x, rh = br.y - tl.y;
+
+    // 画像: 長方形いっぱいに、縦横比を保って切り抜いて敷く
+    // 画像は入れた時の位置・大きさに固定。長方形はその上を動く窓として切り抜く
+    if (img) {
+      var ia = toS({ x: ip.x, y: ip.y }), ib = toS({ x: ip.x + ip.w, y: ip.y + ip.h });
+      // 長方形の外に出た部分は薄く、中はそのまま表示する
+      ctx.save(); ctx.globalAlpha = 0.35;
+      ctx.drawImage(img, ia.x, ia.y, ib.x - ia.x, ib.y - ia.y);
+      ctx.restore();
+      ctx.save(); ctx.beginPath(); ctx.rect(tl.x, tl.y, rw, rh); ctx.clip();
+      ctx.drawImage(img, ia.x, ia.y, ib.x - ia.x, ib.y - ia.y);
+      ctx.restore();
+    }
+    ctx.strokeStyle = css('--frame'); ctx.lineWidth = 1.5;
+    ctx.strokeRect(tl.x, tl.y, rw, rh);
+
+    // 辺を動かすつまみ（辺の外側、中央）
+    var bg = css('--bg'), fr = css('--frame');
+    ((full && !adjOn) ? [] : handles()).forEach(function (hd) {
+      var dx = hd.horiz ? 11 : 0, dy = hd.horiz ? 0 : 11;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = bg; ctx.lineWidth = 12;
+      ctx.beginPath(); ctx.moveTo(hd.x - dx, hd.y - dy); ctx.lineTo(hd.x + dx, hd.y + dy); ctx.stroke();
+      ctx.strokeStyle = fr; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(hd.x - dx, hd.y - dy); ctx.lineTo(hd.x + dx, hd.y + dy); ctx.stroke();
+    });
+
+    // 線: 暗い縁取りの上に色線を重ね、どんな画像の上でも見えるようにする
+    var pts = trace();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    pts.forEach(function (q, i) { var s = toS(q); if (i) ctx.lineTo(s.x, s.y); else ctx.moveTo(s.x, s.y); });
+    ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = S.lw + 2.5; ctx.stroke();
+    ctx.strokeStyle = S.color; ctx.lineWidth = S.lw; ctx.stroke();
+
+    // 始点を選ぶ間だけ、小さな十字で位置を示す（丸は使わない）
+    if (S.mode === 'start') {
+      var s0 = toS({ x: S.x, y: S.y });
+      ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 4;
+      cross(s0, 9); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; cross(s0, 9);
+    }
+  }
+  function cross(s, r) {
+    ctx.beginPath(); ctx.moveTo(s.x - r, s.y); ctx.lineTo(s.x + r, s.y);
+    ctx.moveTo(s.x, s.y - r); ctx.lineTo(s.x, s.y + r); ctx.stroke();
+  }
+
+  function setMode(m) {
+    S.mode = m;
+    $('modeStart').setAttribute('aria-pressed', m === 'start');
+    $('modeAim').setAttribute('aria-pressed', m === 'aim');
+    $('modeImg').setAttribute('aria-pressed', m === 'img');
+    $('fStart').setAttribute('aria-pressed', m === 'start');
+    $('fAim').setAttribute('aria-pressed', m === 'aim');
+    $('fImg').setAttribute('aria-pressed', m === 'img');
+    $('step').textContent = m === 'start' ? '指の1.5cm左に始点が出ます' : m === 'aim' ? '長方形の中を指でスライド' : '1本指で移動、2本指で拡大縮小';
+    draw();
+  }
+
+  function clampPt(w) {
+    return { x: Math.min(S.W, Math.max(0, w.x)), y: Math.min(S.H, Math.max(0, w.y)) };
+  }
+  function pos(e) { var r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+
+  function handles() {
+    var a = toS({ x: 0, y: 0 }), b = toS({ x: S.W, y: S.H });
+    var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    return [
+      { k: 'left', x: a.x - HOFF, y: my, horiz: false },
+      { k: 'right', x: b.x + HOFF, y: my, horiz: false },
+      { k: 'top', x: mx, y: a.y - HOFF, horiz: true },
+      { k: 'bottom', x: mx, y: b.y + HOFF, horiz: true }
+    ];
+  }
+  function hitHandle(m) {
+    var best = null, bd = (full && !adjOn) ? 0 : 30;
+    handles().forEach(function (hd) {
+      // 辺の外側を触ったときだけつまみにする。辺の内側は始点や線の操作に使う
+      var A = toS({ x: 0, y: 0 }), B = toS({ x: S.W, y: S.H });
+      var outer = hd.k === 'left' ? m.x <= A.x + 4 : hd.k === 'right' ? m.x >= B.x - 4 : hd.k === 'top' ? m.y <= A.y + 4 : m.y >= B.y - 4;
+      if (!outer) return;
+      var d = Math.hypot(m.x - hd.x, m.y - hd.y);
+      if (d < bd) { bd = d; best = hd.k; }
+    });
+    return best;
+  }
+  function r1(v) { return Math.round(v * 10) / 10; }
+  // 各辺の位置は始点に関係しない。画像があるときは「画像の中の座標(px)」で数える
+  // こうすると画像を拡大縮小・移動したときも、辺の位置の数字がそれに合わせて変わる
+  // (offは左上の壁の絶対座標、ipは画像の絶対でない内部座標でoffを足すと絶対)
+  function imgScale() { return img ? img.width / ip.w : 1; }
+  function absToView(k, a) {
+    if (!img) return a;
+    return (a - ((k === 'l' || k === 'r') ? ip.x + off.x : ip.y + off.y)) * imgScale();
+  }
+  function viewToAbs(k, v) {
+    if (!img) return v;
+    return v / imgScale() + ((k === 'l' || k === 'r') ? ip.x + off.x : ip.y + off.y);
+  }
+  function getEdge(k) {
+    return absToView(k, k === 'l' ? off.x : k === 'r' ? off.x + S.W : k === 't' ? off.y : off.y + S.H);
+  }
+  // skipId: 入力中の欄は上書きしない
+  function syncLen(skipId) {
+    ['dl', 'dr', 'dt', 'db'].forEach(function (id) {
+      var v = r1(getEdge(id.charAt(1)));
+      var dim = img ? ((id === 'dl' || id === 'dr') ? img.width : img.height) : 0;
+      [id + 'R', 'f' + id + 'R'].forEach(function (rid) {
+        var re = $(rid); if (re) { re.min = img ? -dim * 0.5 : -300; re.max = img ? dim * 1.5 : 800; }
+      });
+      if (id !== skipId) $(id).value = v;
+      $(id + 'R').value = v;
+      var f = $('f' + id);
+      if (f) { if ('f' + id !== skipId) f.value = v; $('f' + id + 'R').value = v; }
+    });
+    var sc = imgScale();
+    $('size').textContent = (img ? '画像内の座標(px)  ' : '') + '横 ' + r1(S.W * sc) + ' × 縦 ' + r1(S.H * sc);
+  }
+  function dragEdge(m) {
+    var cw = cv.clientWidth, ch = cv.clientHeight, s = view.s, MIN = 10;
+    var mx = Math.min(cw - 10, Math.max(10, m.x)), my = Math.min(ch - 10, Math.max(10, m.y));
+    var oW = S.W, oH = S.H, right = view.ox + S.W * s, bottom = view.oy + S.H * s;
+    if (drag === 'right') S.W = Math.max(MIN, r1((mx - HOFF - view.ox) / s));
+    else if (drag === 'bottom') S.H = Math.max(MIN, r1((my - HOFF - view.oy) / s));
+    else if (drag === 'left') { S.W = Math.max(MIN, r1((right - (mx + HOFF)) / s)); view.ox = right - S.W * s; S.x += S.W - oW; ip.x += S.W - oW; off.x -= S.W - oW; }
+    else if (drag === 'top') { S.H = Math.max(MIN, r1((bottom - (my + HOFF)) / s)); view.oy = bottom - S.H * s; S.y += S.H - oH; ip.y += S.H - oH; off.y -= S.H - oH; }
+    S.x = Math.min(S.W - 0.5, Math.max(0.5, S.x));
+    S.y = Math.min(S.H - 0.5, Math.max(0.5, S.y));
+    syncLen(); draw();
+  }
+
+  var ptrs = {}, pinch = null, last = null;
+  function pkeys() { return Object.keys(ptrs); }
+  // 2本指のつまみ: どのモードでも画像を拡大縮小・移動できる
+  function beginPinch() {
+    down = false; drag = null; pinch = null;
+    if (!img) return;
+    var k = pkeys(), a = ptrs[k[0]], b = ptrs[k[1]];
+    var mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, mid0: mid, ip0: { x: ip.x, y: ip.y, w: ip.w, h: ip.h }, wp: toW(mid.x, mid.y) };
+  }
+  function doPinch() {
+    var k = pkeys();
+    if (k.length < 2) return;
+    var a = ptrs[k[0]], b = ptrs[k[1]];
+    var d = Math.hypot(a.x - b.x, a.y - b.y), mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    var pct0 = pinch.ip0.w / base.w * 100;
+    var pct = Math.min(2000, Math.max(5, pct0 * d / pinch.d0));
+    var ratio = pct / pct0;
+    ip.w = pinch.ip0.w * ratio; ip.h = pinch.ip0.h * ratio;
+    ip.x = pinch.wp.x + (mid.x - pinch.mid0.x) / view.s - (pinch.wp.x - pinch.ip0.x) * ratio;
+    ip.y = pinch.wp.y + (mid.y - pinch.mid0.y) / view.s - (pinch.wp.y - pinch.ip0.y) * ratio;
+    var shown = Math.round(pct * 10) / 10;
+    $('ipct').value = shown; $('ipctR').value = shown;
+    syncLen(); draw();
+  }
+  var down = false;
+  cv.addEventListener('pointerdown', function (e) {
+    var m = pos(e), w = clampPt(toW(m.x + (S.mode === 'start' ? START_OFF : 0), m.y));
+    cv.setPointerCapture(e.pointerId);
+    ptrs[e.pointerId] = m;
+    if (pkeys().length === 2) { beginPinch(); return; }
+    if (pkeys().length > 2) return;
+    down = true;
+    var hk = hitHandle(m);
+    if (hk) { drag = hk; return; }
+    if (S.mode === 'img') { last = m; return; }
+    if (S.mode === 'start') { S.x = w.x; S.y = w.y; draw(); }   // 壁の上という端も選べる
+    else aim(w);
+  });
+  cv.addEventListener('pointermove', function (e) {
+    if (ptrs[e.pointerId]) ptrs[e.pointerId] = pos(e);
+    if (pinch) { doPinch(); return; }
+    if (!down) return;
+    var m = pos(e);
+    if (drag) { dragEdge(m); return; }
+    if (S.mode === 'img') {
+      ip.x += (m.x - last.x) / view.s; ip.y += (m.y - last.y) / view.s;
+      last = m; syncLen(); draw(); return;
+    }
+    var w = clampPt(toW(m.x + (S.mode === 'start' ? START_OFF : 0), m.y));
+    if (S.mode === 'start') { S.x = w.x; S.y = w.y; draw(); }
+    else aim(w);
+  });
+  function up() {
+    if (!down) return;
+    down = false;
+    if (drag) { drag = null; return; }
+    if (S.mode === 'start') setMode('aim');   // 始点を決めたら、そのまま線を引く操作へ
+  }
+  cv.addEventListener('pointerup', function (e) {
+    delete ptrs[e.pointerId];
+    if (pinch) { if (pkeys().length < 2) pinch = null; return; }
+    up();
+  });
+  cv.addEventListener('pointercancel', function (e) { delete ptrs[e.pointerId]; pinch = null; down = false; drag = null; });
+
+  function aim(w) {
+    var dx = w.x - S.x, dy = w.y - S.y;
+    if (Math.hypot(dx, dy) < 0.5) return;
+    S.dx = dx; S.dy = dy; draw();
+  }
+
+  $('modeStart').addEventListener('click', function () { setMode('start'); });
+  $('modeAim').addEventListener('click', function () { setMode('aim'); });
+  $('modeImg').addEventListener('click', function () { setMode('img'); });
+  $('bounces').addEventListener('input', function (e) {
+    var v = parseInt(e.target.value, 10);
+    if (!(v >= 1)) return;
+    S.n = Math.min(200, v); $('bouncesR').value = S.n; draw();
+  });
+  $('bounces').addEventListener('change', function (e) { e.target.value = S.n; });
+  $('lw').addEventListener('input', function (e) {
+    var v = parseFloat(e.target.value);
+    if (!(v >= 0.5)) return;
+    S.lw = Math.min(40, v); $('lwR').value = S.lw; draw();
+  });
+  $('lw').addEventListener('change', function (e) { e.target.value = S.lw; });
+  $('lwR').addEventListener('input', function (e) {
+    S.lw = parseFloat(e.target.value); $('lw').value = S.lw; draw();
+  });
+  $('bouncesR').addEventListener('input', function (e) {
+    S.n = parseInt(e.target.value, 10); $('bounces').value = S.n; draw();
+  });
+
+  // 各辺を、始点からの距離で動かす。反対側の辺は動かない
+  // 他の辺は画面上で動かさない。画面からはみ出すときだけ全体を合わせ直す
+  function setEdge(k, v) {
+    v = viewToAbs(k, v);
+    if (k === 'r' && v - off.x < 10) return;
+    if (k === 'l' && off.x + S.W - v < 10) return;
+    if (k === 'b' && v - off.y < 10) return;
+    if (k === 't' && off.y + S.H - v < 10) return;
+    var s = view.s, right = view.ox + S.W * s, bottom = view.oy + S.H * s, g;
+    if (k === 'l') { g = off.x - v; S.W += g; S.x += g; ip.x += g; off.x = v; view.ox = right - S.W * s; }
+    else if (k === 'r') { S.W = v - off.x; }
+    else if (k === 't') { g = off.y - v; S.H += g; S.y += g; ip.y += g; off.y = v; view.oy = bottom - S.H * s; }
+    else { S.H = v - off.y; }
+    var cw = cv.clientWidth, ch = cv.clientHeight, m = 8;
+    if (view.ox < m || view.oy < m || view.ox + S.W * s > cw - m || view.oy + S.H * s > ch - m) resize();
+    else draw();
+  }
+  // 入力途中の値は無視し、1以上の数になったときだけ反映する
+  function edgeInput(id) {
+    var k = id.charAt(1), el = $(id);
+    el.addEventListener('input', function () {
+      var v = parseFloat(el.value);
+      if (!isFinite(v)) return;
+      setEdge(k, v); syncLen(id);
+    });
+    el.addEventListener('change', function () { syncLen(); });
+    $(id + 'R').addEventListener('input', function (e) {
+      setEdge(k, parseFloat(e.target.value)); syncLen();
+    });
+  }
+  ['dl', 'dr', 'dt', 'db'].forEach(edgeInput);
+  $('fit').addEventListener('click', resize);
+
+  // 長方形の大きさの保存（この端末のブラウザに残る）
+  var LS_LAST = 'reflect.last', LS_SIZES = 'reflect.rects';
+  function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function validSize(o) { return o && o.w >= 10 && o.w <= 10000 && o.h >= 10 && o.h <= 10000; }
+  var lastJson = '';
+  function saveLast() {
+    lsSet(LS_LAST, { w: S.W, h: S.H });
+    var j = S.W + 'x' + S.H;
+    if (j !== lastJson) { lastJson = j; queueDb(); }   // 変わったときだけデータベースへも保存
+  }
+  var last0 = lsGet(LS_LAST);
+  if (validSize(last0)) { S.W = last0.w; S.H = last0.h; S.x = S.W * 0.3; S.y = S.H * 0.78; }
+  var sizes = lsGet(LS_SIZES);
+  function validRect(o) {
+    return o && isFinite(o.l) && isFinite(o.t) && isFinite(o.r) && isFinite(o.b) && o.r > o.l && o.b > o.t;
+  }
+  sizes = Array.isArray(sizes) ? sizes.filter(validRect).slice(0, 10) : [];
+  // 以前の形式（横×縦だけ）で保存していた分を、新しい形式に引き継ぐ
+  var oldSizes = lsGet('reflect.sizes');
+  if (Array.isArray(oldSizes)) {
+    oldSizes.filter(validSize).forEach(function (o) { sizes.push({ l: 0, t: 0, r: o.w, b: o.h, iw: 0, ih: 0 }); });
+    sizes = sizes.slice(0, 10);
+    lsSet(LS_SIZES, sizes);
+    try { localStorage.removeItem('reflect.sizes'); } catch (e) {}
+  }
+
+  // 保存した4辺を、今の画像の位置・大きさに当てはめて適用する
+  function canApply(z) { return z.iw ? !!(img && img.width === z.iw && img.height === z.ih) : !img; }
+  function applyRect(z) {
+    if (!canApply(z)) return;
+    var al = viewToAbs('l', z.l), ar = viewToAbs('r', z.r), at = viewToAbs('t', z.t), ab = viewToAbs('b', z.b);
+    var sAx = S.x + off.x, sAy = S.y + off.y, iAx = ip.x + off.x, iAy = ip.y + off.y;
+    off.x = al; off.y = at; S.W = ar - al; S.H = ab - at;
+    ip.x = iAx - al; ip.y = iAy - at;
+    S.x = Math.min(S.W - 0.5, Math.max(0.5, sAx - al));
+    S.y = Math.min(S.H - 0.5, Math.max(0.5, sAy - at));
+    resize(); syncLen(); saveLast();
+  }
+  function renderSizes() {
+    var box = $('saved');
+    box.textContent = '';
+    if (!sizes.length) {
+      var p = document.createElement('p'); p.className = 'empty';
+      p.textContent = '保存した位置はまだありません'; box.appendChild(p); return;
+    }
+    sizes.forEach(function (z, i) {
+      var row = document.createElement('div'); row.className = 'srow';
+      var t = document.createElement('span');
+      t.textContent = (z.iw ? '画像' + z.iw + '×' + z.ih + '  ' : '') + '左 ' + r1(z.l) + ' 上 ' + r1(z.t) + ' 右 ' + r1(z.r) + ' 下 ' + r1(z.b);
+      var a = document.createElement('button'); a.type = 'button'; a.textContent = '適用';
+      if (!canApply(z)) { a.disabled = true; a.title = z.iw ? '同じ画像を入れると適用できます' : '画像を外すと適用できます'; }
+      a.addEventListener('click', function () { applyRect(z); });
+      var d = document.createElement('button'); d.type = 'button'; d.textContent = '削除';
+      d.addEventListener('click', function () { sizes.splice(i, 1); lsSet(LS_SIZES, sizes); renderSizes(); queueDb(); });
+      row.appendChild(t); row.appendChild(a); row.appendChild(d); box.appendChild(row);
+    });
+  }
+  $('saveSize').addEventListener('click', function () {
+    var z0 = {
+      l: r1(getEdge('l')), t: r1(getEdge('t')), r: r1(getEdge('r')), b: r1(getEdge('b')),
+      iw: img ? img.width : 0, ih: img ? img.height : 0
+    };
+    sizes = sizes.filter(function (z) {
+      return !(z.l === z0.l && z.t === z0.t && z.r === z0.r && z.b === z0.b && z.iw === z0.iw && z.ih === z0.ih);
+    });
+    sizes.unshift(z0);
+    sizes = sizes.slice(0, 10);
+    lsSet(LS_SIZES, sizes); renderSizes(); queueDb();
+  });
+  renderSizes();
+  // 最後の大きさは、操作のたびと閉じるときに自動で保存する
+  window.addEventListener('pointerup', saveLast);
+  document.addEventListener('input', saveLast);
+  document.addEventListener('visibilitychange', saveLast);
+  window.addEventListener('pagehide', saveLast);
+
+  // 消えない保存: ブラウザではなく、ページに紐付くデータベース(db)にも保存する
+  var dbDoc = null, dbBusy = false, dbDirty = false, dbTimer = null, initW = S.W, initH = S.H;
+  function queueDb() {
+    if (!dbDoc) return;
+    dbDirty = true;
+    clearTimeout(dbTimer);
+    dbTimer = setTimeout(flushDb, 700);
+  }
+  function flushDb() {
+    if (!dbDoc || !dbDirty) return;
+    if (dbBusy) { clearTimeout(dbTimer); dbTimer = setTimeout(flushDb, 700); return; }
+    dbBusy = true; dbDirty = false;
+    dbDoc.set({ last: { w: S.W, h: S.H }, rects: sizes, updated: Date.now() })
+      .catch(function () {})
+      .then(function () { dbBusy = false; });
+  }
+  document.addEventListener('visibilitychange', function () { if (document.hidden) flushDb(); });
+  function sameRect(a, b) {
+    return a.l === b.l && a.t === b.t && a.r === b.r && a.b === b.b && a.iw === b.iw && a.ih === b.ih;
+  }
+  function mergeRects(a, b) {
+    var out = [];
+    (a || []).concat(b || []).forEach(function (z) {
+      if (!validRect(z)) return;
+      if (out.some(function (q) { return sameRect(q, z); })) return;
+      out.push({ l: z.l, t: z.t, r: z.r, b: z.b, iw: z.iw || 0, ih: z.ih || 0 });
+    });
+    return out.slice(0, 10);
+  }
+  if (window.claude && window.claude.use) {
+    window.claude.use('db').then(function (db) {
+      if (!db) return;
+      var ref = db.doc('app/state');
+      return ref.get().then(function (snap) {
+        var d = snap.exists ? snap.data() : null;
+        if (d) {
+          var merged = mergeRects(d.rects, sizes);
+          var changed = JSON.stringify(merged) !== JSON.stringify(d.rects || []);
+          sizes = merged; lsSet(LS_SIZES, sizes); renderSizes();
+          // この一回目の読み込みで、まだ大きさを触っていなければ、最後に閉じた大きさを戻す
+          if (validSize(d.last) && S.W === initW && S.H === initH) {
+            S.W = d.last.w; S.H = d.last.h; S.x = S.W * 0.3; S.y = S.H * 0.78;
+            lastJson = S.W + 'x' + S.H;
+            resize(); syncLen();
+          }
+          dbDoc = ref;
+          if (changed) queueDb();
+        } else {
+          dbDoc = ref; queueDb();
+        }
+      });
+    }).catch(function () {});
+  }
+
+  // 拡大画面用の調整バー（「調整」でオンオフ）
+  function fEdge(id) {
+    var k = id.charAt(1), el = $('f' + id);
+    el.addEventListener('input', function () {
+      var v = parseFloat(el.value);
+      if (!isFinite(v)) return;
+      setEdge(k, v); syncLen('f' + id);
+    });
+    el.addEventListener('change', function () { syncLen(); });
+    $('f' + id + 'R').addEventListener('input', function (e) {
+      setEdge(k, parseFloat(e.target.value)); syncLen();
+    });
+  }
+  [['dt', '上'], ['db', '下'], ['dl', '左'], ['dr', '右']].forEach(function (p) {
+    var d = document.createElement('div'); d.className = 'fc';
+    d.innerHTML = '<div class="fh"><label for="f' + p[0] + '">' + p[1] + 'の壁</label><input id="f' + p[0] + '" type="number" inputmode="decimal" step="any"></div>' +
+      '<input id="f' + p[0] + 'R" type="range" min="-300" max="800" step="0.1" aria-label="' + p[1] + 'の壁のバー">';
+    $('fadj').appendChild(d); fEdge(p[0]);
+  });
+  syncLen();
+  syncLen();
+
+  $('file').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) return;
+    var url = URL.createObjectURL(f);
+    var im = new Image();
+    im.onload = function () {
+      if (imgUrl) URL.revokeObjectURL(imgUrl);
+      imgUrl = url; img = im;
+      var k = Math.min(S.W / im.width, S.H / im.height);   // 画像全体が長方形に収まる大きさ
+      ip = { w: im.width * k, h: im.height * k, x: 0, y: 0 };
+      ip.x = (S.W - ip.w) / 2; ip.y = (S.H - ip.h) / 2;
+      // 同じサイズの画像で保存済みの長方形があれば、長方形はそのままにして、その範囲が映るよう画像を置く
+      var z = sizes.filter(function (q) { return q.iw === im.width && q.ih === im.height; })[0];
+      if (z) {
+        var k2 = Math.min(S.W / (z.r - z.l), S.H / (z.b - z.t));
+        ip.w = im.width * k2; ip.h = im.height * k2;
+        ip.x = S.W / 2 - (z.l + z.r) / 2 * k2; ip.y = S.H / 2 - (z.t + z.b) / 2 * k2;
+      }
+      base = { w: ip.w, h: ip.h };
+      $('ipct').value = 100; $('ipctR').value = 100;
+      $('ipct').disabled = false; $('ipctR').disabled = false;
+      syncLen(); renderSizes(); draw();
+    };
+    im.onerror = function () { URL.revokeObjectURL(url); };
+    im.src = url;
+    e.target.value = '';
+  });
+  $('clearImg').addEventListener('click', function () {
+    img = null; $('ipct').disabled = true; $('ipctR').disabled = true;
+    syncLen(); renderSizes(); draw();
+  });
+
+  // 画像の拡大縮小は画像の中心を基準にする
+  var base = { w: 1, h: 1 };
+  function setImgPct(v) {
+    if (!img) return;
+    var cx = ip.x + ip.w / 2, cy = ip.y + ip.h / 2;
+    ip.w = base.w * v / 100; ip.h = base.h * v / 100;
+    ip.x = cx - ip.w / 2; ip.y = cy - ip.h / 2;
+    syncLen(); draw();
+  }
+  $('ipct').addEventListener('input', function (e) {
+    var v = parseFloat(e.target.value);
+    if (!(v >= 5)) return;
+    v = Math.min(2000, v);
+    $('ipctR').value = v; setImgPct(v);
+  });
+  $('ipct').addEventListener('change', function (e) { e.target.value = Math.round(ip.w / base.w * 1000) / 10; });
+  $('ipctR').addEventListener('input', function (e) {
+    var v = parseFloat(e.target.value);
+    $('ipct').value = v; setImgPct(v);
+  });
+
+  // 線の色
+  var sw = $('sw');
+  COLORS.forEach(function (c) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.style.background = c.v; b.setAttribute('aria-label', c.name);
+    b.setAttribute('aria-pressed', c.v === S.color);
+    b.addEventListener('click', function () {
+      S.color = c.v;
+      Array.prototype.forEach.call(sw.children, function (x) { x.setAttribute('aria-pressed', x === b); });
+      draw();
+    });
+    sw.appendChild(b);
+  });
+
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
+  window.addEventListener('resize', resize);
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+
+  // 拡大画面: 長方形だけを画面いっぱいに出す
+  function setFull(on) {
+    full = on; drag = null; down = false; pinch = null; ptrs = {};
+    document.body.classList.toggle('full', on);
+    $('fbar').hidden = !on;
+    adjOn = false; $('fAdj').setAttribute('aria-pressed', 'false');
+    if (on) window.scrollTo(0, 0);
+    resize();
+  }
+  $('modeFull').addEventListener('click', function () { setFull(true); });
+  $('fClose').addEventListener('click', function () { setFull(false); });
+  $('fAdj').addEventListener('click', function () {
+    // 「調整」で辺のつまみを出す。指でつまみをドラッグして辺を動かす
+    adjOn = !adjOn;
+    this.setAttribute('aria-pressed', adjOn);
+    resize();
+  });
+  $('fStart').addEventListener('click', function () { setMode('start'); });
+  $('fAim').addEventListener('click', function () { setMode('aim'); });
+  $('fImg').addEventListener('click', function () { setMode('img'); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && full) setFull(false); });
+
+  setMode('start');
+  resize();
+})();
+</script>
+</body>
+</html>
