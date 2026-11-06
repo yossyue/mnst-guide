@@ -703,13 +703,15 @@ summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px;
     var url = URL.createObjectURL(f);
     var im = new Image();
     im.onload = function () {
+      // 画像を差し替えるときは、今の長方形の座標(px)をそのまま保つ
+      var keep = img ? { l: getEdge('l'), t: getEdge('t'), r: getEdge('r'), b: getEdge('b') } : null;
       if (imgUrl) URL.revokeObjectURL(imgUrl);
       imgUrl = url; img = im;
       var k = Math.min(S.W / im.width, S.H / im.height);   // 画像全体が長方形に収まる大きさ
       ip = { w: im.width * k, h: im.height * k, x: 0, y: 0 };
       ip.x = (S.W - ip.w) / 2; ip.y = (S.H - ip.h) / 2;
       // 同じサイズの画像で保存済みの長方形があれば、長方形はそのままにして、その範囲が映るよう画像を置く
-      var z = sizes.filter(function (q) { return q.iw === im.width && q.ih === im.height; })[0];
+      var z = keep || sizes.filter(function (q) { return q.iw === im.width && q.ih === im.height; })[0];
       if (z) {
         var k2 = Math.min(S.W / (z.r - z.l), S.H / (z.b - z.t));
         ip.w = im.width * k2; ip.h = im.height * k2;
