@@ -102,6 +102,9 @@ details { background: var(--panel); border: 1px solid var(--line); border-radius
 summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px; cursor: pointer; font-size: .9375rem; }
 .inner { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; }
 .inner .ctl { padding: 4px 0; border: 0; background: transparent; }
+/* 押したときの表示: どのボタンも押している間はオレンジになる */
+button:not(:disabled):active, label.btn:active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.srow button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 700; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 </style>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -135,11 +138,11 @@ summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px;
 
     <div class="nf">
       <label for="lw">線の太さ</label>
-      <span class="in"><input id="lw" type="number" inputmode="decimal" min="0.5" max="40" step="any" value="1">px</span>
+      <span class="in"><input id="lw" type="number" inputmode="decimal" min="0.5" max="40" step="any" value="1.8">px</span>
     </div>
 
     <div class="row">
-      <label class="btn" for="file"><input id="file" class="sr" type="file" accept="image/*">画像を入れる</label>
+      <label class="btn" for="file"><input id="file" class="sr" type="file" accept="image/*" multiple>画像を入れる</label>
       <button id="clearImg" type="button">画像を外す</button>
     </div>
 
@@ -212,7 +215,7 @@ summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px;
     { name: '赤', v: '#ff3b30' }, { name: '黄', v: '#ffd60a' }, { name: '緑', v: '#30d158' },
     { name: '青', v: '#0a84ff' }, { name: '白', v: '#ffffff' }, { name: '黒', v: '#111111' }
   ];
-  var S = { W: 180, H: 200, x: 0.3 * 180, y: 0.78 * 200, dx: 0.42, dy: -0.9, n: 8, lw: 1, mode: 'start', color: COLORS[0].v, aimed: true };
+  var S = { W: 180, H: 200, x: 0.3 * 180, y: 0.78 * 200, dx: 0.42, dy: -0.9, n: 8, lw: 1.8, mode: 'start', color: COLORS[0].v, aimed: true };
   var view = { ox: 0, oy: 0, s: 1 }, off = { x: 0, y: 0 }, img = null, imgUrl = null, ip = { x: 0, y: 0, w: 1, h: 1 };
 
   function norm(x, y) { var l = Math.hypot(x, y); return { x: x / l, y: y / l }; }
@@ -595,7 +598,14 @@ summary { min-height: 44px; display: flex; align-items: center; padding: 0 14px;
       });
       var a = document.createElement('button'); a.type = 'button'; a.textContent = '適用';
       if (!canApply(z)) { a.disabled = true; a.title = z.iw ? '同じ画像を入れると適用できます' : '画像を外すと適用できます'; }
-      a.addEventListener('click', function () { applyRect(z); });
+      var aTimer = null;
+      a.addEventListener('click', function () {
+        applyRect(z);
+        // 適用したことが分かるよう、ボタンをしばらくオレンジにして「適用しました」と出す
+        a.setAttribute('aria-pressed', 'true'); a.textContent = '適用しました';
+        clearTimeout(aTimer);
+        aTimer = setTimeout(function () { a.setAttribute('aria-pressed', 'false'); a.textContent = '適用'; }, 1500);
+      });
       var d = document.createElement('button'); d.type = 'button'; d.textContent = '削除';
       d.addEventListener('click', function () { sizes.splice(i, 1); lsSet(LS_SIZES, sizes); renderSizes(); queueDb(); });
       row.appendChild(t); row.appendChild(a); row.appendChild(rn); row.appendChild(d); box.appendChild(row);
